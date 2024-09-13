@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Citas Médicas</title>
+    <link rel="stylesheet" href="styles.css"> <!-- Opcional: tu archivo de estilos CSS -->
+</head>
+<body>
+    <h1>Gestión de Citas Médicas</h1>
+
+    <h2>Crear Cita</h2>
+    <form id="crearCitaForm">
+        <div>
+            <label for="doctor">Doctor:</label>
+            <select id="doctor" name="doctor" required>
+                <option value="" disabled selected>Seleccione un doctor</option>
+                <!-- Opciones cargadas dinámicamente -->
+            </select>
+        </div>
+        <div>
+            <label for="consultorio">Consultorio:</label>
+            <select id="consultorio" name="consultorio" required>
+                <option value="" disabled selected>Seleccione un consultorio</option>
+                <!-- Opciones cargadas dinámicamente -->
+            </select>
+        </div>
+        <div>
+            <label for="horarioConsulta">Horario de Consulta:</label>
+            <input type="datetime-local" id="horarioConsulta" name="horarioConsulta" required>
+        </div>
+        <div>
+            <label for="pacienteNombre">Nombre del Paciente:</label>
+            <input type="text" id="pacienteNombre" name="pacienteNombre" required>
+        </div>
+        <button type="submit">Crear Cita</button>
+    </form>
+
+    <h2>Editar o Eliminar Cita</h2>
+    <form id="buscarCitaForm">
+        <div>
+            <label for="citaId">ID de la Cita:</label>
+            <input type="number" id="citaId" name="citaId" required>
+        </div>
+        <button type="submit">Buscar Cita</button>
+    </form>
+
+    <div id="citaDetails" style="display: none;">
+        <h3>Detalles de la Cita</h3>
+        <form id="editarCitaForm">
+            <input type="hidden" id="editCitaId">
+            <div>
+                <label for="editDoctor">Doctor:</label>
+                <select id="editDoctor" name="doctor" required>
+                    <option value="" disabled selected>Seleccione un doctor</option>
+                    <!-- Opciones cargadas dinámicamente -->
+                </select>
+            </div>
+            <div>
+                <label for="editConsultorio">Consultorio:</label>
+                <select id="editConsultorio" name="consultorio" required>
+                    <option value="" disabled selected>Seleccione un consultorio</option>
+                    <!-- Opciones cargadas dinámicamente -->
+                </select>
+            </div>
+            <div>
+                <label for="editHorarioConsulta">Horario de Consulta:</label>
+                <input type="datetime-local" id="editHorarioConsulta" name="horarioConsulta" required>
+            </div>
+            <div>
+                <label for="editPacienteNombre">Nombre del Paciente:</label>
+                <input type="text" id="editPacienteNombre" name="pacienteNombre" required>
+            </div>
+            <button type="submit">Actualizar Cita</button>
+            <button type="button" id="eliminarCitaButton">Eliminar Cita</button>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Cargar doctores desde el servidor
+            fetch('/doctores')
+                .then(response => response.json())
+                .then(doctores => {
+                    const doctorSelect = document.getElementById('doctor');
+                    const editDoctorSelect = document.getElementById('editDoctor');
+                    doctorSelect.innerHTML = '<option value="" disabled selected>Seleccione un doctor</option>'; // Limpiar y añadir opción predeterminada
+                    editDoctorSelect.innerHTML = '<option value="" disabled selected>Seleccione un doctor</option>'; // Limpiar y añadir opción predeterminada
+                    doctores.forEach(doctor => {
+                        const option = document.createElement('option');
+                        option.value = doctor.id;
+                        option.textContent = `${doctor.nombre} ${doctor.apellidoPaterno} ${doctor.apellidoMaterno}`;
+                        doctorSelect.appendChild(option);
+                        editDoctorSelect.appendChild(option.cloneNode(true)); // Clonar para el formulario de edición
+                    });
+                })
+                .catch(error => console.error('Error al cargar doctores:', error));
+
+            // Cargar consultorios desde el servidor
+            fetch('/consultorios')
+                .then(response => response.json())
+                .then(consultorios => {
+                    const consultorioSelect = document.getElementById('consultorio');
+                    const editConsultorioSelect = document.getElementById('editConsultorio');
+                    consultorioSelect.innerHTML = '<option value="" disabled selected>Seleccione un consultorio</option>'; // Limpiar y añadir opción predeterminada
+                    editConsultorioSelect.innerHTML = '<option value="" disabled selected>Seleccione un consultorio</option>'; // Limpiar y añadir opción predeterminada
+                    consultorios.forEach(consultorio => {
+                        const option = document.createElement('option');
+                        option.value = consultorio.id;
+                        option.textContent = `Consultorio ${consultorio.numero} - Piso ${consultorio.piso}`;
+                        consultorioSelect.appendChild(option);
+                        editConsultorioSelect.appendChild(option.cloneNode(true)); // Clonar para el formulario de edición
+                    });
+                })
+                .catch(error => console.error('Error al cargar consultorios:', error));
+
+            // Manejar el envío del formulario de creación
+            document.getElementById('crearCitaForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+
+                const formData = new FormData(this);
+                const cita = {
+                    doctor: { id: formData.get('doctor') },
+                    consultorio: { id: formData.get('consultorio') },
+                    horarioConsulta: formData.get('horarioConsulta'),
+                    pacienteNombre: formData.get('pacienteNombre')
+                };
+
+                fetch('/citas', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(cita)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert('Cita creada exitosamente');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Hubo un error al crear la cita');
+                });
+            });
+
+            // Manejar la búsqueda de cita
+            document.getElementById('buscarCitaForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+                const citaId = document.getElementById('citaId').value;
+                fetch(`/citas/${citaId}`)
+                    .then(response => response.json())
+                    .then(cita => {
+                        if (cita) {
+                            document.getElementById('citaDetails').style.display = 'block';
+                            document.getElementById('editCitaId').value = cita.id;
+                            document.getElementById('editDoctor').value = cita.doctor.id;
+                            document.getElementById('editConsultorio').value = cita.consultorio.id;
+                            document.getElementById('editHorarioConsulta').value = cita.horarioConsulta;
+                            document.getElementById('editPacienteNombre').value = cita.pacienteNombre;
+                        } else {
+                            alert('Cita no encontrada');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Hubo un error al buscar la cita');
+                    });
+            });
+
+            // Manejar la actualización de cita
+            document.getElementById('editarCitaForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+
+                const formData = new FormData(this);
+                const cita = {
+                    doctor: { id: formData.get('editDoctor') },
+                    consultorio: { id: formData.get('editConsultorio') },
+                    horarioConsulta: formData.get('editHorarioConsulta'),
+                    pacienteNombre: formData.get('editPacienteNombre')
+                };
+
+               
+const citaId = document.getElementById('editCitaId').value;
+
+if (!citaId || isNaN(citaId)) {
+    alert('ID de cita inválido');
+    return;
+}
+
+               fetch(`/citas/${cita.id}`, {
+                 method: 'PUT',
+                 headers: {
+        '        Content-Type': 'application/json'
+    },
+    body: JSON.stringify(cita)
+})
+
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => { throw new Error(text); });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    alert('Cita actualizada exitosamente');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Hubo un error al actualizar la cita');
+                });
+            });
+
+            // Manejar la eliminación de cita
+            document.getElementById('eliminarCitaButton').addEventListener('click', function() {
+                const citaId = document.getElementById('editCitaId').value;
+                fetch(`/citas/${citaId}`, {
+                    method: 'DELETE'
+                })
+                .then(() => {
+                    alert('Cita eliminada exitosamente');
+                    document.getElementById('citaDetails').style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Hubo un error al eliminar la cita');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
